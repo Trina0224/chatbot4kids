@@ -204,7 +204,7 @@ class DualCameraGPTApp:
             self.camera_frame.pack(side=tk.TOP, fill=tk.X)
             
             if self.picam1:
-                self.preview1_canvas = tk.Canvas(self.camera_frame, width=640, height=480)
+                self.preview1_canvas = tk.Canvas(self.camera_frame, width=320, height=240)
                 if len(self.available_cameras) == 1:
                     # If only one camera, let it take full width
                     self.preview1_canvas.pack(side=tk.TOP, padx=5, expand=True)
@@ -212,7 +212,7 @@ class DualCameraGPTApp:
                     self.preview1_canvas.pack(side=tk.LEFT, padx=5)
                 
             if self.picam2:
-                self.preview2_canvas = tk.Canvas(self.camera_frame, width=640, height=480)
+                self.preview2_canvas = tk.Canvas(self.camera_frame, width=320, height=240)
                 self.preview2_canvas.pack(side=tk.LEFT, padx=5)
         else:
             # No cameras available - show message
