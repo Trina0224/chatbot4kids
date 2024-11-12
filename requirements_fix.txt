@@ -1,0 +1,25 @@
+# AI and API packages
+openai==1.52.2
+anthropic==0.39.0
+google-generativeai==0.8.3
+
+# Audio and speech processing
+sounddevice==0.5.1
+pydub==0.25.1
+numpy==1.24.2
+
+# Image processing and camera
+Pillow==9.4.0
+picamera2==0.3.22
+pygame==2.1.2
+
+# Chinese text conversion
+opencc-python-reimplemented==0.1.7
+
+# Utilities
+python-dotenv==0.21.0
+typing_extensions==4.12.2
+
+# Optional: These might be needed depending on system setup
+# python-prctl==1.8.1  # For Linux process management
+# RPi.GPIO==0.7.1a4    # For Raspberry Pi GPIO
