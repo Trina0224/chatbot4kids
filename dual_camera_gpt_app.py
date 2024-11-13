@@ -20,7 +20,10 @@ class DualCameraGPTApp:
     def __init__(self, master):
         self.master = master
         master.title("Dual Camera GPT Interface")
-       
+        
+        self.input_focus_timer = None
+        self.is_input_focused = False
+
         # Initialize converter before other components
         self.converter = opencc.OpenCC('s2t')
 
@@ -271,12 +274,69 @@ class DualCameraGPTApp:
         self.chat_input.bind("<Return>", lambda e: self.handle_input())
         self.chat_input.bind("<Up>", self.handle_up_key)
         self.chat_input.bind("<Down>", self.handle_down_key)
+        
+        # Add focus and unfocus bindings to chat input
+        self.chat_input.bind("<FocusIn>", self.on_input_focus)
+        self.chat_input.bind("<FocusOut>", self.on_input_unfocus)
+        self.chat_input.bind("<Key>", self.reset_focus_timer)
 
         # Keyboard shortcuts
         for widget in (self.master, self.chat_input):
             widget.bind('`', lambda e: self.toggle_recording())
             widget.bind('<Control-q>', lambda e: self.exit_program())
 
+
+    def on_input_focus(self, event=None):
+        """Handle input focus event"""
+        self.is_input_focused = True
+        self.start_focus_timer()
+        print("[DEBUG] Input focused")
+
+    def on_input_unfocus(self, event=None):
+        """Handle input unfocus event"""
+        self.is_input_focused = False
+        if self.input_focus_timer:
+            self.master.after_cancel(self.input_focus_timer)
+            self.input_focus_timer = None
+        print("[DEBUG] Input unfocused")
+
+    def reset_focus_timer(self, event=None):
+        """Reset the focus timer when user types or clicks buttons"""
+        if event.keysym != 'grave':  # Don't reset for backtick key
+            self.start_focus_timer()
+
+    def start_focus_timer(self):
+        """Start or restart the focus timer"""
+        if self.input_focus_timer:
+            self.master.after_cancel(self.input_focus_timer)
+        self.input_focus_timer = self.master.after(3000, self.auto_unfocus)
+        print("[DEBUG] Focus timer started/reset")
+
+    def auto_unfocus(self):
+        """Automatically unfocus the input after timer expires"""
+        self.is_input_focused = False
+        self.input_focus_timer = None
+        self.master.focus_set()  # Move focus to main window
+        print("[DEBUG] Auto unfocused due to timer")
+
+    def handle_backtick(self, event):
+        """Handle backtick key press"""
+        if not self.is_input_focused:
+            self.toggle_recording()
+            return "break"  # Prevent the backtick from appearing in input
+        return None  # Allow backtick in input when focused
+
+    def handle_input(self):
+        """Modified handle_input method"""
+        user_input = self.chat_input.get().strip()
+        if not user_input:
+            return
+        
+        # Reset focus after sending message
+        self.is_input_focused = False
+        if self.input_focus_timer:
+            self.master.after_cancel(self.input_focus_timer)
+            self.input_focus_timer = None
 
     def on_model_change(self):
         """Handle AI model selection change"""
@@ -420,53 +480,23 @@ How can I help you today?
     def capture_preview_loop(self, camera, preview_queue, camera_num):
         while self.running:
             try:
-                frame = camera.capture_array("lores")
+                # Capture frame (matching autoFcamera.py)
+                frame = camera.capture_array()
                 if frame is not None:
-                    # Get the dimensions
-                    height = 480  # Original height (720/1.5)
-                    width = 640
-                
-                    # Reshape YUV420 data
-                    y = frame[:height]
-                    u = frame[height:height + height//4].reshape(height//2, width//2)
-                    v = frame[height + height//4:].reshape(height//2, width//2)
-                
-                    # Upscale U and V
-                    u_upscaled = u.repeat(2, axis=0).repeat(2, axis=1)
-                    v_upscaled = v.repeat(2, axis=0).repeat(2, axis=1)
-                
-                    # Adjust conversion values (BT.601 standard)
-                    y = np.clip(y, 16, 235).astype(float)
-                    u_upscaled = np.clip(u_upscaled, 16, 240).astype(float)
-                    v_upscaled = np.clip(v_upscaled, 16, 240).astype(float)
-                
-                    # Normalize to proper ranges
-                    y = (y - 16) * (255 / 219)
-                    u = (u_upscaled - 128) * (255 / 224)
-                    v = (v_upscaled - 128) * (255 / 224)
-                
-                    # Convert YUV to RGB using BT.601 coefficients
-                    r = y + 1.402 * v
-                    g = y - 0.344136 * u - 0.714136 * v
-                    b = y + 1.772 * u
-                
-                    # Combine and clip to valid RGB range
-                    rgb = np.dstack([r, g, b]).clip(0, 255).astype(np.uint8)
-                
-                
-                    # Convert to PIL Image
-                    image = Image.fromarray(rgb, mode='RGB')
-                    photo = ImageTk.PhotoImage(image)
+                    # Convert to PIL Image and resize for display
+                    image = Image.fromarray(frame)
+                    image = image.transpose(Image.FLIP_LEFT_RIGHT)
+                    image = image.resize((426, 240), Image.Resampling.LANCZOS)
+                    photo = ImageTk.PhotoImage(image=image)
                     preview_queue.put(photo)
                 else:
-                    print(f"[DEBUG] Empty frame from camera {camera_num}")
+                    print(f"[DEBUG] Empty frame from camera")
                 
             except Exception as e:
-                print(f"[DEBUG] Error capturing preview from camera {camera_num}: {e}")
+                print(f"[DEBUG] Error capturing preview: {e}")
                 time.sleep(0.1)
-            
+        
             time.sleep(0.033)  # ~30 FPS
-    
 
     
     def update_preview_canvases(self):
