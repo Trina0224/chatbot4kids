@@ -1,34 +1,41 @@
+# camera_utils.py
 from picamera2 import Picamera2
 from PIL import Image, ImageTk
 import datetime
 import os
 from pathlib import Path
+from typing import Optional
 
 class CameraManager:
+    """Manages single camera operations"""
+    
     @staticmethod
-    def detect_cameras() -> list:
-        """Detect available camera"""
+    def detect_camera() -> bool:
+        """
+        Detect if camera is available
+        Returns:
+            bool: True if camera is available, False otherwise
+        """
         try:
-            # Try to detect Camera
-            try:
-                cam = Picamera2(0)
-                cam.close()
-                print("[DEBUG] Camera detected")
-                return [0]
-            except Exception as e:
-                print(f"[DEBUG] Camera not available: {e}")
-                return []
+            cam = Picamera2(0)
+            cam.close()
+            print("[DEBUG] Camera detected")
+            return True
         except Exception as e:
-            print(f"[DEBUG] Error in camera detection: {e}")
-            return []
+            print(f"[DEBUG] Camera not available: {e}")
+            return False
 
     @staticmethod
-    def setup_camera(camera_num: int) -> Picamera2:
-        """Setup camera with specified configuration"""
+    def setup_camera() -> Optional[Picamera2]:
+        """
+        Setup single camera with error handling
+        Returns:
+            Optional[Picamera2]: Initialized camera object or None if failed
+        """
         try:
-            camera = Picamera2(camera_num)
+            camera = Picamera2(0)
             
-            # Create preview configuration (matching autoFcamera.py)
+            # Create preview configuration
             preview_config = camera.create_preview_configuration(
                 main={"size": (1536, 864)},
                 buffer_count=4
@@ -37,94 +44,101 @@ class CameraManager:
             # Configure camera
             camera.configure(preview_config)
             
-            # Enable continuous autofocus
+            # Set camera controls
             camera.set_controls({
-                "AfMode": 2  # 0:Manual 1:Auto 2:Continuous
-                #"HFlip": True
+                "AfMode": 2,  # Continuous autofocus
+                "AwbEnable": 1,  # Auto white balance
+                "AeEnable": 1    # Auto exposure
             })
-
+            
             camera.start()
-            print(f"[DEBUG] Camera successfully initialized")
+            print("[DEBUG] Camera successfully initialized")
             return camera
             
         except Exception as e:
             print(f"[DEBUG] Error setting up camera: {e}")
-            raise
+            return None
 
     @staticmethod
-    def capture_high_res(camera: Picamera2, camera_num: int) -> str:
-        """Capture high resolution image and save to Pictures folder"""
+    def capture_high_res(camera: Picamera2) -> Optional[str]:
+        """
+        Capture high resolution image
+        Returns:
+            Optional[str]: Path to saved image or None if failed
+        """
+        if not camera:
+            print("[DEBUG] No camera provided")
+            return None
+            
+        original_config = None
         try:
-            # Stop preview
-            camera.stop()
+            # Store original configuration
+            original_config = camera.camera_configuration
             
             # Configure for high-res capture
+            camera.stop()
             capture_config = camera.create_still_configuration(
                 main={"size": (4608, 2592)}
             )
             camera.configure(capture_config)
             camera.start()
+            
+            # Set capture controls
             camera.set_controls({
-                "AfMode": 2
-                #"HFlip": True
+                "AfMode": 2,
+                "AwbEnable": 1,
+                "AeEnable": 1
             })
 
-            # Capture image
+            # Create timestamp and filename
             timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-            pictures_dir = str(Path.home() / "Pictures")
-            os.makedirs(pictures_dir, exist_ok=True)
-            filename = os.path.join(pictures_dir, f"image_{timestamp}.jpg")
-            camera.capture_file(filename)
+            pictures_dir = Path.home() / "Pictures"
+            pictures_dir.mkdir(exist_ok=True)
+            filename = pictures_dir / f"image_{timestamp}.jpg"
             
-            print(f"Image saved: {filename}")
+            # Capture image
+            camera.capture_file(str(filename))
+            print(f"[DEBUG] High-res image saved: {filename}")
             
-            # Return to preview configuration
-            camera.stop()
-            preview_config = camera.create_preview_configuration(
-                main={"size": (1536, 864)},
-                buffer_count=4
-            )
-            camera.configure(preview_config)
-            camera.start()
-            
-            # Re-enable continuous autofocus
-            camera.set_controls({
-                "AfMode": 2
-                #"HFlip": True
-            })
-            
-            return filename
+            return str(filename)
             
         except Exception as e:
-            print(f"Error capturing image: {e}")
-            # Ensure camera is reconfigured even after error
-            try:
-                camera.stop()
-                preview_config = camera.create_preview_configuration(
-                    main={"size": (1536, 864)},
-                    buffer_count=4
-                )
-                camera.configure(preview_config)
-                camera.start()
-                camera.set_controls({
-                    "AfMode": 2
-                    #"HFlip": True
-                })
-            except Exception as config_error:
-                print(f"Error reconfiguring camera: {config_error}")
+            print(f"[DEBUG] Error capturing high-res image: {e}")
             return None
+            
+        finally:
+            # Restore original configuration
+            try:
+                if original_config:
+                    camera.stop()
+                    camera.configure(original_config)
+                    camera.start()
+            except Exception as e:
+                print(f"[DEBUG] Error restoring camera configuration: {e}")
 
     @staticmethod
-    def capture_and_convert(camera: Picamera2, camera_num: int) -> str:
-        """Capture image and convert to 512x512 for AI processing"""
-        final_path = f"camera{camera_num}.jpg"
+    def capture_and_convert(camera: Picamera2) -> Optional[str]:
+        """
+        Capture and process image for AI analysis
+        Returns:
+            Optional[str]: Path to processed image or None if failed
+        """
+        if not camera:
+            print("[DEBUG] No camera provided")
+            return None
+            
+        final_path = "camera.jpg"
         
         try:
             # Capture frame
             image_array = camera.capture_array()
+            if image_array is None:
+                raise ValueError("Captured frame is empty")
+                
+            # Process image
             img = Image.fromarray(image_array).convert('RGB')
             
-            # Calculate aspect ratio preserving resize dimensions
+            # Calculate resize dimensions
             aspect_ratio = img.width / img.height
             if aspect_ratio > 1:
                 resize_width = int(512 * aspect_ratio)
@@ -133,18 +147,18 @@ class CameraManager:
                 resize_width = 512
                 resize_height = int(512 / aspect_ratio)
             
-            # Resize maintaining aspect ratio
+            # Resize and crop to 512x512
             img = img.resize((resize_width, resize_height), Image.Resampling.LANCZOS)
-            
-            # Center crop to 512x512
             left = (resize_width - 512) // 2
             top = (resize_height - 512) // 2
             img = img.crop((left, top, left + 512, top + 512))
             
+            # Save processed image
             img.save(final_path, "JPEG", quality=95)
+            print(f"[DEBUG] Processed image saved: {final_path}")
             return final_path
             
         except Exception as e:
-            print(f"Error in image processing: {e}")
+            print(f"[DEBUG] Error in image processing: {e}")
             return None
 
