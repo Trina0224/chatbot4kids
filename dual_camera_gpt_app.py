@@ -509,9 +509,9 @@ How can I help you today?
         image_path = None
         if ("camera" in user_input.lower() or
             "what is this" in user_input.lower() or
-            "what is that" in user_input.lower()) and self.picam1:
+            "what is that" in user_input.lower()) and self.camera:
             self.update_status("Processing image... Please wait.")
-            image_path = CameraManager.capture_and_convert(self.picam1, 1)
+            image_path = CameraManager.capture_and_convert(self.camera)
             if not image_path:
                 self.insert_colored_message("system", "Error capturing image.")
                 return

@@ -29,8 +29,7 @@ class GrokModel(AIModelInterface):
                        conversation_history: List[Dict],
                        image_path: Optional[str] = None) -> List[Dict]:
         """
-        Format messages for Grok API
-        Note: Current implementation handles text only. Image support coming soon.
+        Format messages for Grok API with image support
         """
         formatted_messages = []
         
@@ -42,22 +41,42 @@ class GrokModel(AIModelInterface):
             })
         
         # Process conversation messages
-        for message in conversation_history[1:]:  # Skip system message if present
+        for message in conversation_history[1:]:  # Skip system message
             if isinstance(message['content'], str):
                 formatted_messages.append({
                     "role": message["role"],
                     "content": message["content"]
                 })
-            else:  # Handle messages with images (placeholder for future implementation)
+            else:  # Handle messages with images
                 if image_path and message == conversation_history[-1]:
-                    # This is a temporary placeholder - update when X releases image support
-                    text_content = message["content"][0]["text"]
-                    formatted_messages.append({
-                        "role": message["role"],
-                        "content": f"{text_content} [Note: Image analysis coming soon in next release]"
-                    })
+                    # Include image in the latest message
+                    try:
+                        base64_image = self.encode_image_to_base64(image_path)
+                        text_content = message["content"][0]["text"]
+                        formatted_messages.append({
+                            "role": message["role"],
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": text_content
+                                },
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:image/jpeg;base64,{base64_image}"
+                                    }
+                                }
+                            ]
+                        })
+                    except Exception as e:
+                        print(f"[DEBUG] Error formatting image message: {e}")
+                        # Fallback to text-only message
+                        formatted_messages.append({
+                            "role": message["role"],
+                            "content": message["content"][0]["text"]
+                        })
                 else:
-                    # For non-image messages or previous messages
+                    # For non-image messages or previous messages with images
                     formatted_messages.append({
                         "role": message["role"],
                         "content": message["content"][0]["text"]
@@ -73,10 +92,7 @@ class GrokModel(AIModelInterface):
         try:
             formatted_messages = self.format_messages(messages, image_path)
             
-            # If there's an image but image support isn't ready
-            if image_path:
-                print("[DEBUG] Image analysis with Grok will be supported in the next release")
-            
+            # Using grok-beta for both text and image analysis
             response = self.client.chat.completions.create(
                 model="grok-beta",
                 messages=formatted_messages,
