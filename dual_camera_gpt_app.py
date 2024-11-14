@@ -27,6 +27,10 @@ class DualCameraGPTApp:
         # Initialize converter before other components
         self.converter = opencc.OpenCC('s2t')
 
+        # Initialize the GPT conversation manager (modified)
+        #self.conversation_manager = ConversationManager()
+        #self.conversation_manager.tts_manager.record_button = self.record_button  # Pass reference
+
 
         # Initialize recording state
         self.is_recording = False
@@ -75,6 +79,11 @@ class DualCameraGPTApp:
         # Create main UI
         self.create_ui()
         
+        # Initialize the GPT conversation manager (modified)
+        self.conversation_manager = ConversationManager()
+        self.conversation_manager.tts_manager.record_button = self.record_button  # Pass reference
+
+
         # Now we can setup text tags after chat_display is created
         self.setup_text_tags()
         
@@ -143,7 +152,7 @@ class DualCameraGPTApp:
         self.record_button = tk.Button(
             self.button_frame,
             text="Say Something (`)",
-            command=self.toggle_recording,
+            command=self.toggle_audio_recording,
             relief=tk.RAISED,
             bg='light gray',
             activebackground='gray'
@@ -250,9 +259,26 @@ class DualCameraGPTApp:
 
         # Keyboard shortcuts
         for widget in (self.master, self.chat_input):
-            widget.bind('`', lambda e: self.toggle_recording())
+            widget.bind('`', lambda e: self.toggle_audio_recording())
             widget.bind('<Control-q>', lambda e: self.exit_program())
 
+
+    def toggle_audio_recording(self):
+        """
+        Toggle between:
+        1. Stopping audio playback if active
+        2. Starting audio recording after a short delay if not recording
+        """
+        try:
+            if self.conversation_manager.tts_manager.is_playing:
+                self.stop_audio()  # Stop the audio
+                self.record_button.configure(text="Start Recording (`)")
+                self.master.after(500, self.start_recording)  # 500ms delay before recording
+            else:
+                self.toggle_recording()  # Normal recording toggle
+        except Exception as e:
+            print(f"Error toggling audio recording: {e}")
+            self.update_status("Error toggling audio recording")
 
     def on_input_focus(self, event=None):
         """Handle input focus event"""
@@ -560,12 +586,25 @@ How can I help you today?
             self.master.quit()
             self.master.destroy()
     
+    def start_recording(self):
+        """Start the recording process."""
+        if not self.is_recording:
+            self.toggle_recording()  # Use existing recording function
+
 
     def toggle_recording(self):
+        """
+        Handles the recording button and the backtick key.
+        Toggles between recording and not recording.
+        """
         if not self.is_recording:
             # Start recording
             self.is_recording = True
-            self.record_button.configure(bg='red', activebackground='dark red')
+            self.record_button.configure(
+                text="Stop Recording (`)",
+                bg='red',
+                activebackground='dark red'
+            )
             self.update_status("Recording audio...")
             self.audio_data = []
             self.recording_thread = threading.Thread(target=self.record_audio)
@@ -573,11 +612,16 @@ How can I help you today?
         else:
             # Stop recording
             self.is_recording = False
-            self.record_button.configure(bg='light gray', activebackground='gray')
+            self.record_button.configure(
+                text="Say Something (`)",
+                bg='light gray',
+                activebackground='gray'
+            )
             self.update_status("Processing audio...")
             if self.recording_thread:
                 self.recording_thread.join()
             self.save_and_transcribe_audio()
+
 
     def record_audio(self):
         """Record audio in chunks while is_recording is True."""
@@ -645,17 +689,18 @@ How can I help you today?
 
     def stop_audio(self, event=None):
         """
-        Stop audio playback when Escape is pressed.
+        Stop audio playback.
+        This method is bound to both the Escape key and the backtick key.
         """
         try:
-            self.conversation_manager.tts_manager.stop_playback()
-            self.update_status("")
+            if self.conversation_manager.tts_manager.is_playing:
+                self.conversation_manager.tts_manager.stop_playback()
+                self.update_status("")
+                self.record_button.configure(text="Say Something (`)")  # Reset button text
         except Exception as e:
             print(f"Error stopping audio: {e}")
             self.update_status("Error stopping audio")
-    
-        # Ensure the UI remains responsive
-        self.master.update()
+
 
     def setup_text_tags(self):
         """Configure text tags for color coding messages"""
