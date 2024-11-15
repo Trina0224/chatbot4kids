@@ -20,8 +20,7 @@ class TTSManager:
         self.current_thread = None
         self.current_audio_path = None
         self._lock = threading.Lock()
-        self.record_button = None  # Add record_button attribute
-
+   
         # Define voice mapping for different AI models
         self.voice_mapping = {
             'ChatGPT': 'nova',      # Default friendly voice
@@ -82,9 +81,6 @@ class TTSManager:
                 )
                 self.current_thread.daemon = True
                 self.current_thread.start()
-                # Dynamically update the button text
-                if status_callback:
-                    self.record_button.configure(text="Stop AI Talking (`)")
             
         except Exception as e:
             print(f"[DEBUG] Error in text to speech conversion: {e}")
@@ -109,12 +105,9 @@ class TTSManager:
                     self.is_playing = True
                     # Notify that audio is starting
                     if status_callback:
-                        status_callback("Playing audio...")  # Callback to signal GUI update
-                    # Dynamically update button text (correct placement)
-                    if self.record_button and status_callback:  # Check if record_button is available
-                        self.record_button.configure(text="Stop AI Talking (`)")  
+                        status_callback("Playing audio...")
                     pygame.mixer.music.play()
-
+        
             # Wait for playback to finish or stop command
             while self.is_playing and pygame.mixer.music.get_busy():
                 time.sleep(0.1)

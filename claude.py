@@ -4,6 +4,7 @@ from anthropic import Anthropic
 from typing import List, Dict, Optional, Tuple
 import base64
 from pathlib import Path
+from system_prompts import SystemPrompts
 
 class ClaudeModel(AIModelInterface):
     def __init__(self, service_name: str = "anthropic"):
@@ -11,7 +12,8 @@ class ClaudeModel(AIModelInterface):
         super().__init__(service_name)
         self.client = Anthropic(api_key=self.api_key)
         self.model_name = "claude-3-5-sonnet-20241022"
-        
+        self.system_prompt = SystemPrompts.get_prompt("Claude")
+
     def get_model_name(self) -> str:
         return "Claude"
     
@@ -24,9 +26,11 @@ class ClaudeModel(AIModelInterface):
             Tuple[str, List[Dict]]: (system_message, formatted_messages)
         """
         # Extract system prompt
-        system_message = ""
+        system_message = self.system_prompt #""
         if conversation_history and conversation_history[0]["role"] == "system":
             system_message = conversation_history[0]["content"]
+        else:
+            system_message = SystemPrompts.get_prompt("Claude")
 
         # Format conversation messages
         formatted_messages = []

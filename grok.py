@@ -3,6 +3,7 @@ from ai_interface import AIModelInterface
 from openai import OpenAI
 from typing import List, Dict, Optional, Union
 import base64
+from system_prompts import SystemPrompts
 
 class GrokModel(AIModelInterface):
     def __init__(self, service_name: str = "x"):
@@ -12,6 +13,7 @@ class GrokModel(AIModelInterface):
             api_key=self.api_key,
             base_url="https://api.x.ai/v1"
         )
+        self.system_prompt = SystemPrompts.get_prompt("Grok")
         print("[DEBUG] Initialized Grok AI model")
         
     def get_model_name(self) -> str:
@@ -31,7 +33,11 @@ class GrokModel(AIModelInterface):
         """
         Format messages for Grok API with image support
         """
-        formatted_messages = []
+        #formatted_messages = []
+        # Start with system prompt
+        formatted_messages = [
+            {"role": "system", "content": self.system_prompt}
+        ]
         
         # Add system message if present
         if conversation_history and conversation_history[0]["role"] == "system":

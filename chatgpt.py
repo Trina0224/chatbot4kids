@@ -3,13 +3,15 @@ from ai_interface import AIModelInterface
 from openai import OpenAI
 import base64
 from typing import List, Dict, Optional
+from system_prompts import SystemPrompts
 
 class ChatGPTModel(AIModelInterface):
     def __init__(self, service_name: str = "openai"):
         """Initialize ChatGPT with API key"""
         super().__init__(service_name)
         self.client = OpenAI(api_key=self.api_key)
-        
+        self.system_prompt = SystemPrompts.get_prompt("ChatGPT")
+
     def get_model_name(self) -> str:
         return "ChatGPT"
     
@@ -22,19 +24,23 @@ class ChatGPTModel(AIModelInterface):
                        conversation_history: List[Dict],
                        image_path: Optional[str] = None) -> List[Dict]:
         """Format messages for ChatGPT API"""
-        formatted_messages = []
+        formatted_messages = [
+            {"role": "system", "content": self.system_prompt}
+        ]
         
+        # Add non-system messages
         for message in conversation_history:
-            if isinstance(message['content'], str):
-                formatted_messages.append({
-                    "role": message["role"],
-                    "content": message["content"]
-                })
-            else:  # Handle messages with images
-                formatted_messages.append({
-                    "role": message["role"],
-                    "content": message["content"]
-                })
+            if message["role"] != "system":  # Skip original system message
+                if isinstance(message['content'], str):
+                    formatted_messages.append({
+                        "role": message["role"],
+                        "content": message["content"]
+                    })
+                else:  # Handle messages with images
+                    formatted_messages.append({
+                        "role": message["role"],
+                        "content": message["content"]
+                    })
         
         # Add image to the last message if provided
         if image_path:

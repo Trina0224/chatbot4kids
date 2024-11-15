@@ -3,6 +3,7 @@ from ai_interface import AIModelInterface
 import google.generativeai as genai
 from typing import List, Dict, Optional, Union
 import PIL.Image
+from system_prompts import SystemPrompts
 
 class GeminiModel(AIModelInterface):
     def __init__(self, service_name: str = "google"):
@@ -12,19 +13,7 @@ class GeminiModel(AIModelInterface):
         genai.configure(api_key=self.api_key)
         self.model = genai.GenerativeModel("gemini-1.5-flash")
         self.chat = None
-        self.system_context = """You are a knowledgeable assistant with expertise in Japanese, 
-                English, Chinese, Math, Science, Medical, engineering, Christianity, and Biblical studies. There is a camera in the system.
-                When asked about 'camera' or 'what is this','what is that'...etc. 
-                you'll analyze the image. Camera control:
-    - Use {"camera": "1"} to analyze with camera
-    
-    For real-time information:
-    {"Online search": "exact search query"}
-    
-    Please Provide detailed analysis of images and integrate search results seamlessly.
-                Please provide helpful and accurate responses for daily life questions and 
-                image analysis. Maintain conversation context and provide responses in the same language as the 
-                user's query."""
+        self.system_context = SystemPrompts.get_prompt("Gemini")
         print("[DEBUG] Gemini model initialized successfully")
         
     def get_model_name(self) -> str:
@@ -58,8 +47,8 @@ class GeminiModel(AIModelInterface):
                 print(f"[DEBUG] Gemini image loaded successfully: size={image.size}, mode={image.mode}")
                 
                 # Determine which camera is being used
-                camera_context = "front camera (Camera 1)" if "camera1" in image_path else "rear camera (Camera 2)"
-                
+                #camera_context = "front camera (Camera 1)" if "camera1" in image_path else "front camera (Camera 1)"
+                camera_context = "camera (Camera 1)" if "camera" in image_path else "camera (Camera 1)"
                 # Create a contextual prompt
                 prompt = f"{self.system_context}\n\nAnalyzing image from {camera_context}. {text_content}"
                 return [prompt, image]
