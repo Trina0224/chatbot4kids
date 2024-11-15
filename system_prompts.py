@@ -15,7 +15,7 @@ class SystemPrompts:
     - Any reference to "camera" or "take photo" will use the camera
     
     After receiving camera images or search results, incorporate them into your response naturally.
-    Maintain conversation context and provide responses in the same language as the user's query."""
+    Maintain conversation context and provide responses in the same language as the user's query. Please always use Traditional Chinese for Chinese response."""
 
     # Model-specific additions remain the same as they don't reference multiple cameras
     CHATGPT_EXTRA = """Example camera control:
