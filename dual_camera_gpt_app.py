@@ -404,7 +404,7 @@ class DualCameraGPTApp:
     
     def display_welcome_message(self):
         welcome_message = """Welcome! I'm your AI assistant. I can help you with questions in English, Japanese, Chinese, 
-and particularly with topics related to Christianity and the Bible.
+and particularly with topics related to Sciense, Math, Medical, Engineering, Christianity and the Bible.
 
 Camera Commands:
 - "what is this?" or "what is that?" - Analyze the current camera view
@@ -418,7 +418,7 @@ Keyboard shortcuts:
 ` (Backtick) - Toggle Recording
 Enter/Return - Send Message
 Ctrl+Q  - Exit Program
-Esc - Stop GPT's talking
+Esc - Stop AI's talking
 
 How can I help you today?
 """
@@ -479,6 +479,16 @@ How can I help you today?
 
     def update_status(self, message):
         self.status_label.config(text=message)
+        if message in ("---",
+                       "Switched to ChatGPT", 
+                       "Switched to Claude", 
+                       "Switched to Gemini", 
+                       "Switched to Grok", 
+                       "Switched to Perplexity", 
+                       "Recording audio...", "Generating speech"): # "Processing audio...", "Playing audio..."):
+            self.record_button.configure(state=tk.NORMAL)#DISABLED)
+        else:
+            self.record_button.configure(state=tk.DISABLED)#NORMAL) # This enables the button
         self.master.update_idletasks()
 
     def handle_input(self):
