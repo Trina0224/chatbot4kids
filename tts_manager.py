@@ -135,7 +135,7 @@ class TTSManager:
             
                 # Notify that audio has stopped
                 if status_callback:
-                    status_callback("---") #Changed from "" to True.
+                    status_callback("")
             
                 self.current_audio_path = None
 

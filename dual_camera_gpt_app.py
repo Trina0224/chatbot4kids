@@ -153,8 +153,9 @@ class DualCameraGPTApp:
         # Send button
         self.send_button = ttk.Button(
             self.button_frame,
-            text="Send",
-            command=self.handle_input,
+            text="Stop",
+            #command=self.handle_input,
+            command=self.stop_audio,
             style='Tall.TButton'
         )
         self.send_button.pack(fill=tk.X, padx=5, pady=5, ipady=10)
@@ -479,11 +480,6 @@ How can I help you today?
     def update_status(self, message):
         self.status_label.config(text=message)
         self.master.update_idletasks()
-        if message in ("---", " ","Recording audio...", "Generating speech"): # "Processing audio...", "Playing audio..."):
-            self.record_button.configure(state=tk.NORMAL)#DISABLED)
-        else:
-            self.record_button.configure(state=tk.DISABLED)#NORMAL) # This enables the button
-
 
     def handle_input(self):
         user_input = self.chat_input.get().strip()
@@ -578,7 +574,7 @@ How can I help you today?
         else:
             # Stop recording
             self.is_recording = False
-            self.record_button.configure(bg='light gray', activebackground='gray',state=tk.DISABLED)
+            self.record_button.configure(bg='light gray', activebackground='gray')
             self.update_status("Processing audio...")
             if self.recording_thread:
                 self.recording_thread.join()
