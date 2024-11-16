@@ -21,6 +21,12 @@ class DualCameraGPTApp:
         self.master = master
         master.title("Camera GPT Interface")
         
+        #master.state('zoomed') #Preferred window size.
+        # Default to max window size without fullscreen
+        screen_width = master.winfo_screenwidth()
+        screen_height = master.winfo_screenheight()
+        master.geometry(f"{screen_width}x{screen_height}")
+
         self.input_focus_timer = None
         self.is_input_focused = False
 
@@ -39,7 +45,7 @@ class DualCameraGPTApp:
         self.history_index = 0
         
         # Set default font size for chat areas
-        self.current_font_size = 12
+        self.current_font_size = 15
         self.chat_font = font.Font(size=self.current_font_size)
         
         # Define color schemes for different participants
@@ -217,6 +223,8 @@ class DualCameraGPTApp:
         chat_container.grid_rowconfigure(1, weight=0)
 
         # Chat display with reduced height
+        # Ensure the chat container has fixed dimensions
+        chat_container.grid_propagate(False)
         self.chat_display = scrolledtext.ScrolledText(
             chat_container,
             wrap=tk.WORD,
@@ -704,4 +712,5 @@ How can I help you today?
 
         # Ensure the latest message is visible
         self.chat_display.see(tk.END)
+
 
